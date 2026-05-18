@@ -1,0 +1,1 @@
+&dyn futures_util::Future<Output = Result<(), Box<dyn std::error::Error + std::marker::Send + Sync>>>
