@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
             .connect()
             .await?;
 
-    println!(" Connected to websocket server on ws://127.0.0.1:8080");
+    println!(" Connectedd to websocket server on ws://127.0.0.1:8080");
     println!("Type a message and press Enter (Ctrl+C to exit):");
 
     let stdin = tokio::io::stdin();
