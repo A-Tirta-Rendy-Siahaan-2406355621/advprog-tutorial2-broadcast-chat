@@ -130,3 +130,45 @@ The sender address is obtained from the `addr` variable. This variable comes fro
 This change is implemented on the server side because the server is the central part of the broadcast system. Every message from every client must pass through the server before it is sent to other clients. By modifying the message on the server, all clients receive the same formatted message consistently. The IP address is usually `127.0.0.1` because the experiment runs locally, while the port number may be different for each client. This port number helps distinguish one client connection from another client connection.
 
 ---
+
+## Bonus: Rust Websocket server for YewChat
+
+### Description
+
+For this bonus experiment, I modified the Tutorial 2 Rust websocket server so it can be used by the Tutorial 3 YewChat web client. The original Tutorial 2 server only treated every websocket text frame as a plain chat message. YewChat also sends websocket data as text frames, but the text content is serialized JSON. Because of that, the Rust server does not need a different websocket transport. It only needs to understand the JSON message format used by the web client.
+
+### Modified server behavior
+
+The server now understands two incoming YewChat message types:
+
+```json
+{"messageType":"register","data":"indra"}
+```
+
+```json
+{"messageType":"message","data":"hello"}
+```
+
+When a client registers, the server stores the username for that websocket connection and broadcasts a user list update:
+
+```json
+{"messageType":"users","dataArray":["indra"]}
+```
+
+When a registered client sends a chat message, the server broadcasts a YewChat-compatible message event:
+
+```json
+{"messageType":"message","data":"{\"from\":\"indra\",\"message\":\"hello\",\"time\":1710000000000}"}
+```
+
+The important detail is that the outer websocket payload is still one text message. The server serializes and deserializes JSON using `serde` and `serde_json`, then sends the result through the same `tokio::sync::broadcast` channel that was already used in Tutorial 2.
+
+The server still listens on `127.0.0.1:8080` by default, so it matches the YewChat websocket URL. For testing, the port can also be changed with the `PORT` environment variable.
+
+### Explanation
+
+I changed `src/bin/server.rs` by adding typed Rust structs for the JSON protocol. `ClientMessage` represents incoming messages from YewChat, while `ServerMessage` represents outgoing messages sent back to the browser. The server also keeps a shared `BTreeMap<SocketAddr, String>` protected by `tokio::sync::Mutex`. This map connects each websocket address to the username that was sent in the `register` message.
+
+This change is successful because it preserves the websocket mechanism from Tutorial 2 but changes the message contract to match Tutorial 3. The YewChat client expects `messageType: "users"` to update the online user list, and `messageType: "message"` with a serialized `data` field to render chat messages. The Rust server now sends both of those formats. It also removes disconnected users from the map and broadcasts the updated user list, so the browser UI can stay synchronized.
+
+I prefer the Rust version for the server because it gives stronger type checking around the protocol and fits well with asynchronous networking through Tokio. The JavaScript or TypeScript version is faster to write and easier to prototype, but the Rust version makes invalid message handling and shared state more explicit. For a learning prototype, JavaScript is simpler. For a more reliable websocket service, I prefer Rust.
