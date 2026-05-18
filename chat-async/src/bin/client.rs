@@ -8,11 +8,11 @@ use tokio_websockets::{ClientBuilder, Message};
 async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Connect to WebSocket server
     let (mut ws_stream, _) =
-        ClientBuilder::from_uri(Uri::from_static("ws://127.0.0.1:2000"))
+        ClientBuilder::from_uri(Uri::from_static("ws://127.0.0.1:8080"))
             .connect()
             .await?;
 
-    println!(" Connected to websocket server on ws://127.0.0.1:2000");
+    println!(" Connected to websocket server on ws://127.0.0.1:8080");
     println!("Type a message and press Enter (Ctrl+C to exit):");
 
     let stdin = tokio::io::stdin();

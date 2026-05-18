@@ -34,4 +34,99 @@ The program uses asynchronous programming because the server needs to handle man
 
 The broadcast mechanism uses `tokio::sync::broadcast`. When a client sends a message, the server forwards that message into the broadcast channel. Every active client connection has its own receiver from `bcast_tx.subscribe()`, so every client can receive the same message. This is why a message typed in one client appears in the other clients. This behavior shows why asynchronous programming is useful for chat applications, because the application needs to wait for network input from many sources at the same time.
 
+## Experiment 2.2: Modifying port
+
+### Description
+
+In this experiment, I changed the websocket port from `2000` to `8080`. This change needs to be done on both the server side and the client side. The server must listen on the new port, and the client must connect to the same new port.
+
+### Modified files
+
+The server address was changed in `src/bin/server.rs`:
+
+```rust
+let listener = TcpListener::bind("127.0.0.1:8080").await?;
+println!("Server is listening on ws://127.0.0.1:8080");
+```
+
+The client websocket URI was changed in `src/bin/client.rs`:
+
+```rust
+let uri = Uri::from_static("ws://127.0.0.1:8080");
+```
+
+### How to run
+
+Run the server:
+
+```bash
+cargo run --bin server
+```
+
+Run the clients:
+
+```bash
+cargo run --bin client
+```
+
+
+
+
+### Explanation
+
+The websocket connection has two important sides: the server side and the client side. The server side decides where the application listens by calling `TcpListener::bind("127.0.0.1:8080")`. The client side decides where to connect by using the URI `ws://127.0.0.1:8080`. If only the server is changed but the client still connects to port `2000`, the connection will fail because there is no server listening on that old port. If only the client is changed but the server still listens on port `2000`, the client will also fail because it tries to reach the wrong destination.
+
+The protocol is still `ws`, which means websocket without TLS. The host is still `127.0.0.1`, which means the application runs locally on my own computer. The only modified part is the port number. After changing both files, the chat application still works properly because both sides now use the same websocket address.
+
+---
+
+## Experiment 2.3: Small changes, add IP and Port
+
+### Description
+
+In this experiment, I modified the server so that every broadcasted message contains information about the sender address. The sender address consists of the sender IP address and port number. This makes the chat output more informative because every client can see which socket address sent the message.
+
+### Modified code
+
+The original server only broadcasted the plain message text:
+
+```rust
+bcast_tx.send(text.to_string())?;
+```
+
+I changed it into this:
+
+```rust
+let formatted_message = format!("{addr}: {text}");
+bcast_tx.send(formatted_message)?;
+```
+
+### How to run
+
+Run the server:
+
+```bash
+cargo run --bin server
+```
+
+Run multiple clients:
+
+```bash
+cargo run --bin client
+```
+
+Type a message from one client and observe the output in the other clients.
+
+### Result
+
+![Experiment 2.3](screenshots/experiment-2.3-client.png)
+![Experiment 2.3](screenshots/experiment-2.3-server.png)
+
+
+### Explanation
+
+The sender address is obtained from the `addr` variable. This variable comes from `listener.accept().await`, which returns both the socket and the address of the connected client. In the previous experiment, the server only broadcasted the message text, so the clients could not know which connection sent the message. In this experiment, I changed the message format before sending it to the broadcast channel. The server now combines the sender address and the original message using `format!("{addr}: {text}")`.
+
+This change is implemented on the server side because the server is the central part of the broadcast system. Every message from every client must pass through the server before it is sent to other clients. By modifying the message on the server, all clients receive the same formatted message consistently. The IP address is usually `127.0.0.1` because the experiment runs locally, while the port number may be different for each client. This port number helps distinguish one client connection from another client connection.
+
 ---
